@@ -356,3 +356,21 @@ ns.selected=ns.listEntries[1].id; ns:Refresh()
 assert(ns.listOffset==0,'Selecting a memory brings it into view')
 for i=1,12 do ns:Delete(1000+i) end; ns.listOffset=0; ns:Refresh()
 print("PASS: UI construction, opening, captions, closing, reopening and empty filters")
+-- Remove confirms with a second click on the same button (no Blizzard popup, which
+-- would run gamepad binding code under addon taint). Changing memory disarms it.
+ns.filter=nil; ns:Refresh()
+level=30
+local second=assert(ns:Capture(false))
+ns.selected=second.id; ns:Refresh()
+local before,remove=#ns.album.entries,ns.frame.delete
+remove.scripts.OnClick(remove)
+assert(#ns.album.entries==before and ns.removeArmed==second.id and remove.text~="Remove",'First click on Remove only asks to confirm')
+local other
+for _,entry in ipairs(ns.album.entries) do if entry.id~=second.id then other=entry end end
+ns.selected=other.id; ns:Refresh()
+assert(ns.removeArmed==nil and remove.text=="Remove",'Selecting another memory disarms Remove')
+ns.selected=second.id; ns:Refresh()
+remove.scripts.OnClick(remove); remove.scripts.OnClick(remove)
+assert(#ns.album.entries==before-1 and ns.current and ns.current.id==other.id,'Second click removes and keeps the reader on a neighbour')
+assert(StaticPopupDialogs.WTC_FOREVER_DELETE==nil and remove.text=="Remove",'No Blizzard popup is registered')
+print("PASS: two-click Remove without a StaticPopup")

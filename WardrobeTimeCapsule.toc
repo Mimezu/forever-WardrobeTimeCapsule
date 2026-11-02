@@ -2,13 +2,12 @@
 ## Title: Wardrobe Time Capsule
 ## Notes: A Classic photo album of your looks on the journey from level 1 to 60.
 ## Author: Mimezu
-## Version: 1.2.3-forever
+## Version: 1.2.4-forever
 ## SavedVariables: WardrobeTimeCapsuleDB
 ## LoadSavedVariablesFirst: 1
 # Settings load through native SavedVariables.
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## Category: Mimezu's Suite
-## Group: Mimezu_Journals
 
 Core.lua
 LegacySkin.lua

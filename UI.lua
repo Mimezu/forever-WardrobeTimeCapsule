@@ -138,6 +138,10 @@ function ns:Refresh(force)
     local entry = entries[selectedIndex]
     self.selected = entry and entry.id
     self.current = entry
+    -- A pending Remove confirmation belongs to the memory it was clicked on.
+    if self.removeArmed and (not entry or self.removeArmed ~= entry.id) then
+        self.removeArmed = nil; f.delete:SetText("Remove")
+    end
     -- Keep the selected memory in view; wheel and scroll bar move listOffset freely.
     local visible = #f.rows
     local offset = self.listOffset or 0
@@ -289,8 +293,8 @@ function ns:Build()
     close:ClearAllPoints()
     if f.legacyBorder then
         -- Native Forever geometry: ButtonFrameTemplate's close button sits at the border
-        -- frame's TOPRIGHT (-2, 1) at the template's own size (Camelot SharedUIPanelTemplates).
-        close:SetPoint("TOPRIGHT",f.legacyBorder,"TOPRIGHT",-2,1)
+        -- frame's TOPRIGHT (0, 3) at the template's own size (28 px since build 70532) (Camelot SharedUIPanelTemplates).
+        close:SetPoint("TOPRIGHT",f.legacyBorder,"TOPRIGHT",0,3)
     else
         close:SetSize(24,24)
         close:SetPoint("TOPRIGHT",f,"TOPRIGHT",-8,-12)
@@ -476,35 +480,52 @@ function ns:Build()
     f.page = Label(f, "", 340, -690, "GameFontNormal")
     f.page:SetWidth(320); f.page:SetJustifyH("CENTER")
     f.edit = Button(f, "Edit caption", 100, 22, -683, function() ns:Edit() end)
-    f.delete = Button(f, "Remove", 104, 126, -683, function()
-        StaticPopup_Show("WTC_FOREVER_DELETE", nil, nil, ns.current.id)
+    -- Confirmation is a second click on the same button (as in Petal and Map
+    -- Mementos), not a StaticPopup: Blizzard's popup code runs gamepad binding
+    -- setup, and run from addon code in the gamepad interface it taints that
+    -- path (the stuck A/B buttons). The armed state clears after 3 seconds, on
+    -- a different memory, or when the journal closes.
+    f.delete = Button(f, "Remove", 104, 126, -683, function(self)
+        local entry = ns.current
+        if not entry then return end
+        if ns.removeArmed ~= entry.id then
+            ns.removeArmed = entry.id
+            self:SetText("|cffff8040Confirm?|r")
+            C_Timer.After(3, function()
+                if ns.removeArmed == entry.id then ns.removeArmed = nil; self:SetText("Remove") end
+            end)
+            return
+        end
+        ns.removeArmed = nil
+        self:SetText("Remove")
+        ns:RemoveEntry(entry.id)
     end)
     f.auto = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
     f.auto:SetSize(20, 20); f.auto:SetPoint("TOPLEFT", 22, -715)
     Label(f, "Save a look on each level up", 46, -720, "GameFontHighlightSmall")
     f.auto:SetScript("OnClick", function(self) ns.album.auto = self:GetChecked() and true or false end)
     f:SetScript("OnShow", function() ns.showReal = false; ns:SelectLatest(); ns:Refresh(true) end)
-    f:SetScript("OnHide", function() if ns.editor then ns.editor:Hide() end end)
+    f:SetScript("OnHide", function()
+        if ns.editor then ns.editor:Hide() end
+        ns.removeArmed = nil; f.delete:SetText("Remove")
+    end)
     if self.BuildBackgroundLab then self:BuildBackgroundLab(Button,Label) end
     if self.BuildCompositions then self:BuildCompositions(Button, Label) end
 end
 
-StaticPopupDialogs.WTC_FOREVER_DELETE = {
-    text = "Remove this look from your journal?", button1 = "Remove", button2 = CANCEL,
-    OnAccept = function(_, id)
-        -- Keep the reader's place: select the next memory (or the previous one at the end).
-        local entries = ns:Entries(ns.filter)
-        for i, entry in ipairs(entries) do
-            if entry.id == id then
-                local neighbor = entries[i + 1] or entries[i - 1]
-                ns.selected = neighbor and neighbor.id or nil
-                break
-            end
+-- Removes a memory and keeps the reader's place: the next memory is selected
+-- (or the previous one at the end).
+function ns:RemoveEntry(id)
+    local entries = self:Entries(self.filter)
+    for i, entry in ipairs(entries) do
+        if entry.id == id then
+            local neighbor = entries[i + 1] or entries[i - 1]
+            self.selected = neighbor and neighbor.id or nil
+            break
         end
-        ns:Delete(id); ns:Refresh()
-    end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
-}
+    end
+    self:Delete(id); self:Refresh()
+end
 
 -- Opening the journal shows the most recent memory, with its level range selected.
 function ns:SelectLatest()
