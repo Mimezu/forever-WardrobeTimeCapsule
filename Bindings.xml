@@ -1,0 +1,8 @@
+<Bindings>
+	<Binding name="WARDROBETIMECAPSULE_TOGGLE" header="WARDROBETIMECAPSULE" category="ADDONS">
+		WardrobeTimeCapsule_Toggle()
+	</Binding>
+	<Binding name="WARDROBETIMECAPSULE_SAVE" category="ADDONS">
+		WardrobeTimeCapsule_Save()
+	</Binding>
+</Bindings>

@@ -305,14 +305,20 @@ events:SetScript("OnEvent", function(_, event, level)
     elseif level >= 1 and level <= 60 then ns:QueueLevel(level, 1) end
 end)
 
+-- Saves the current look without opening the album (/looks save and its key).
+function ns:QuickSave()
+    if not self.album and not self:Initialize() then return end
+    local entry, err = self:Capture(false)
+    self:Print(entry and "Look saved to your album." or err)
+    return entry
+end
+
 SLASH_WARDROBETIMECAPSULE1 = "/looks"
 SLASH_WARDROBETIMECAPSULE2 = "/wtc"
 SlashCmdList.WARDROBETIMECAPSULE = function(command)
     if not ns.album and not ns:Initialize() then return end
     command = (command or ""):lower():match("^%s*(.-)%s*$")
-    if command == "save" then
-        local entry, err = ns:Capture(false)
-        ns:Print(entry and "Look saved to your album." or err)
+    if command == "save" then ns:QuickSave()
     elseif command == "lab" and ns.ToggleBackgroundLab then ns:ToggleBackgroundLab()
     elseif command == "debug" then ns:DebugTransmog()
     else ns:Toggle() end

@@ -374,3 +374,86 @@ remove.scripts.OnClick(remove); remove.scripts.OnClick(remove)
 assert(#ns.album.entries==before-1 and ns.current and ns.current.id==other.id,'Second click removes and keeps the reader on a neighbour')
 assert(StaticPopupDialogs.WTC_FOREVER_DELETE==nil and remove.text=="Remove",'No Blizzard popup is registered')
 print("PASS: two-click Remove without a StaticPopup")
+
+-- Keys, minimap button and the Settings page.
+local bindings, saved, combat = {F5="TOGGLEWORLDMAP"}, 0, false
+BINDING_NAME_TOGGLEWORLDMAP = "Open map"
+function GetBindingKey(action) local keys={} for k,a in pairs(bindings) do if a==action then keys[#keys+1]=k end end; return unpack(keys) end
+function GetBindingAction(key) return bindings[key] or "" end
+function GetBindingText(key) return key end
+function SetBinding(key, action) bindings[key]=action end
+function SaveBindings() saved=saved+1 end
+function GetCurrentBindingSet() return 1 end
+function InCombatLockdown() return combat end
+local alt=false
+function IsAltKeyDown() return alt end
+function IsControlKeyDown() return false end
+function IsShiftKeyDown() return false end
+for method in ("EnableKeyboard RegisterForClicks SetFrameLevel"):gmatch("%S+") do F[method]=noop end
+Minimap = widget("Frame")
+function Minimap:GetWidth() return 140 end
+function Minimap:GetHeight() return 140 end
+function Minimap:GetCenter() return 100, 100 end
+function Minimap:GetEffectiveScale() return 1 end
+GameTooltip = widget("Frame"); GameTooltip.SetOwner = noop
+local printed
+ns.Print = function(_, message) printed = message end
+local registered
+Settings = {RegisterCanvasLayoutCategory=function(panel, name) return {panel=panel, name=name} end,
+    RegisterAddOnCategory=function(category) registered=category end}
+SettingsPanel = widget("Frame"); function HideUIPanel(frame) frame:Hide() end
+local loaderScripts
+local optionsCreate = CreateFrame
+CreateFrame = function(kind, ...) local w = optionsCreate(kind, ...); if not loaderScripts then loaderScripts = w end; return w end
+assert(loadfile(root .. "Options.lua"))("WardrobeTimeCapsule", ns)
+CreateFrame = optionsCreate
+assert(BINDING_NAME_WARDROBETIMECAPSULE_TOGGLE and BINDING_NAME_WARDROBETIMECAPSULE_SAVE and BINDING_HEADER_WARDROBETIMECAPSULE)
+loaderScripts.scripts.OnEvent(nil, "PLAYER_LOGIN")
+assert(ns.minimapButton and ns.minimapButton:IsShown(), "Minimap button shown by default")
+assert(registered and registered.name == "Wardrobe Time Capsule", "Settings page registered under the addon title")
+-- Album footer gets the minimap toggle and both key setters.
+local f = ns.frame
+if not f:IsShown() then ns:Toggle() end
+ns:BuildOptions(nil, function() return widget("FontString") end)
+assert(f.minimapCheck and f.minimapCheck.checked and #f.keys == 2 and f.keys[1].text == "Not set")
+f.minimapCheck.checked = false; f.minimapCheck.scripts.OnClick(f.minimapCheck)
+assert(ns.db.minimap.hide and not ns.minimapButton:IsShown(), "Minimap toggle saved and applied")
+assert(registered.panel.minimapCheck.checked == false, "Settings checkbox follows the album")
+registered.panel.minimapCheck.checked = true; registered.panel.minimapCheck.scripts.OnClick(registered.panel.minimapCheck)
+assert(not ns.db.minimap.hide and ns.minimapButton:IsShown() and f.minimapCheck.checked)
+-- Dragging saves the angle.
+GetCursorPosition = function() return 100, 200 end
+ns.minimapButton.scripts.OnDragStart(ns.minimapButton); ns.minimapButton.scripts.OnUpdate(ns.minimapButton)
+ns.minimapButton.scripts.OnDragStop(ns.minimapButton)
+assert(math.abs(ns.db.minimap.angle - 90) < .01 and ns.minimapButton.anchor[4] < .01 and ns.minimapButton.anchor[5] == 72)
+-- Listening: Esc cancels, modifiers combine, a taken key is replaced and reported.
+local open = f.keys[1]
+open.scripts.OnClick(open)
+assert(open.listening and open.text == "Press a key" and open.catcher:IsShown())
+open.catcher.scripts.OnKeyDown(nil, "ESCAPE")
+assert(not open.listening and open.text == "Not set" and saved == 0)
+open.scripts.OnClick(open)
+open.catcher.scripts.OnKeyDown(nil, "LSHIFT")
+assert(open.listening, "Modifiers alone keep listening")
+open.catcher.scripts.OnKeyDown(nil, "F5")
+assert(bindings.F5 == "WARDROBETIMECAPSULE_TOGGLE" and saved == 1 and printed:find("Open map"), "Taken key replaced with a warning")
+assert(open.text == "F5" and registered.panel.keys[1].text == "F5", "Both pages show the new key")
+open.scripts.OnClick(open); alt = true
+open.catcher.scripts.OnKeyDown(nil, "L"); alt = false
+assert(bindings["ALT-L"] == "WARDROBETIMECAPSULE_TOGGLE" and bindings.F5 == nil, "Old key cleared, modifiers combine")
+open.scripts.OnClick(open); open.catcher.scripts.OnMouseDown(nil, "RightButton")
+assert(not open.listening and bindings["ALT-L"] == "WARDROBETIMECAPSULE_TOGGLE", "Right click cancels")
+combat = true; printed = nil
+open.scripts.OnClick(open)
+assert(not open.listening and printed == "Not in combat.", "Refused in combat")
+combat = false
+-- Settings page Open closes Settings and opens the album; the save key saves.
+f:Hide(); SettingsPanel:Show()
+registered.panel.open.scripts.OnClick()
+assert(f:IsShown() and not SettingsPanel:IsShown())
+local count = #ns.album.entries
+WardrobeTimeCapsule_Save()
+assert(#ns.album.entries == count + 1 and printed == "Look saved to your album.")
+WardrobeTimeCapsule_Toggle()
+assert(not f:IsShown(), "Open key toggles the album")
+print("PASS: key setters, minimap button and Settings page")

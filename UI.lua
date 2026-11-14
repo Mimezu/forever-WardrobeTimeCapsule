@@ -511,6 +511,7 @@ function ns:Build()
     end)
     if self.BuildBackgroundLab then self:BuildBackgroundLab(Button,Label) end
     if self.BuildCompositions then self:BuildCompositions(Button, Label) end
+    if self.BuildOptions then self:BuildOptions(Button, Label) end
 end
 
 -- Removes a memory and keeps the reader's place: the next memory is selected
