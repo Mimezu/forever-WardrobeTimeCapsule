@@ -155,7 +155,6 @@ function ns:Refresh(force)
     f.page:SetText(#entries > 0 and (selectedIndex .. " / " .. #entries) or "Your first page awaits")
     f.auto:SetChecked(self.album.auto)
     for _, button in ipairs(f.filters) do button:SetEnabled(button.filter ~= self.filter) end
-    self:UpdateRows()
     f.empty:SetShown(not entry)
     f.model:SetShown(entry ~= nil)
     f.edit:SetEnabled(entry ~= nil); f.delete:SetEnabled(entry ~= nil)
@@ -189,13 +188,14 @@ function ns:Refresh(force)
         icon.texture:SetTexture(look and look.icon or item and item.icon or "Interface\\PaperDoll\\UI-Backpack-EmptySlot")
         icon:SetAlpha((item or look) and not (look and look.hidden) and 1 or .35)
     end
+    -- After the slot icons: UpdateRows ends by styling them.
+    self:UpdateRows()
     -- Reloading the model flickers; only do it when a different look is shown.
     if entry then
         if force or f.model.entry ~= entry then self:Replay(entry) end
     elseif f.model.entry ~= nil or force then
         f.model.entry = nil; self:RefreshPetPreview()
     end
-    if self.StyleCompositionSlots then self:StyleCompositionSlots() end
 end
 
 function ns:Step(direction)
