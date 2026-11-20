@@ -2,7 +2,7 @@
 ## Title: Wardrobe Time Capsule
 ## Notes: A Classic photo album of your looks on the journey from level 1 to 60.
 ## Author: Mimezu
-## Version: 1.3.0-forever
+## Version: 1.3.1-forever
 ## SavedVariables: WardrobeTimeCapsuleDB
 ## LoadSavedVariablesFirst: 1
 # Settings load through native SavedVariables.
